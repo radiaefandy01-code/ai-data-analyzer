@@ -11,7 +11,7 @@ export default function Home() {
         </p>
 
         <button className="mt-8 rounded-lg bg-black px-6 py-3 text-white">
-          Pilih File CSV NAYRA
+          Pilih File CSV
         </button>
       </div>
     </main>
