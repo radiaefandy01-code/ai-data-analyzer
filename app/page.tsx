@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import Papa from "papaparse";
+import {
+  profileData,
+  type DataProfile,
+} from "@/lib/dataProfiler";
 
 type CSVData = string[][];
 
@@ -9,6 +13,7 @@ export default function Home() {
   const [fileName, setFileName] = useState("");
   const [data, setData] = useState<CSVData>([]);
   const [error, setError] = useState("");
+  const [profile, setProfile] = useState<DataProfile | null>(null);
 
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>
@@ -20,6 +25,7 @@ export default function Home() {
     setError("");
     setData([]);
     setFileName("");
+    setProfile(null);
 
     if (!file.name.toLowerCase().endsWith(".csv")) {
       setError("Silakan pilih file CSV.");
@@ -44,6 +50,7 @@ export default function Home() {
         }
 
         setData(results.data);
+        setProfile(profileData(results.data));
       },
 
       error: () => {
@@ -135,6 +142,95 @@ export default function Home() {
             </div>
           </div>
         )}
+        {profile && (
+  <div className="mt-10 rounded-lg border p-6">
+    <h2 className="text-2xl font-bold">
+      📊 Ringkasan Data
+    </h2>
+
+    <div className="mt-4 grid gap-4 md:grid-cols-3">
+      <div>
+        <p className="text-sm text-gray-500">
+          Jumlah Data
+        </p>
+        <p className="text-xl font-bold">
+          {profile.rows}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-gray-500">
+          Jumlah Kolom
+        </p>
+        <p className="text-xl font-bold">
+          {profile.columns}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-gray-500">
+          Missing Values
+        </p>
+        <p className="text-xl font-bold">
+          {profile.totalMissing}
+        </p>
+      </div>
+    </div>
+
+    <div className="mt-8 space-y-6">
+      {profile.columnProfiles.map((column) => (
+        <div
+          key={column.name}
+          className="rounded-lg border p-4"
+        >
+          <h3 className="text-lg font-bold">
+            {column.name}
+          </h3>
+
+          <p className="mt-1">
+            Tipe: <strong>{column.type}</strong>
+          </p>
+
+          <p>
+            Unique values: {column.unique}
+          </p>
+
+          <p>
+            Missing: {column.missing}
+          </p>
+
+          {column.type === "numeric" && (
+            <div className="mt-3">
+              <p>Minimum: {column.min}</p>
+              <p>Maximum: {column.max}</p>
+              <p>
+                Rata-rata:{" "}
+                {column.average?.toFixed(2)}
+              </p>
+            </div>
+          )}
+
+          {column.type === "category" &&
+            column.categories && (
+              <div className="mt-3">
+                <p className="font-semibold">
+                  Distribusi:
+                </p>
+
+                {Object.entries(column.categories).map(
+                  ([value, count]) => (
+                    <p key={value}>
+                      {value}: {count}
+                    </p>
+                  )
+                )}
+              </div>
+            )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
       </div>
     </main>
   );
