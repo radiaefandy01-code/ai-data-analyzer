@@ -6,6 +6,10 @@ import {
   profileData,
   type DataProfile,
 } from "@/lib/dataProfiler";
+import {
+  calculateNumericStatistics,
+  type NumericStatistics,
+} from "@/lib/statistics";
 
 type CSVData = string[][];
 
@@ -14,6 +18,9 @@ export default function Home() {
   const [data, setData] = useState<CSVData>([]);
   const [error, setError] = useState("");
   const [profile, setProfile] = useState<DataProfile | null>(null);
+  const [statistics, setStatistics] = useState<
+  Record<string, NumericStatistics | null>
+>({});
 
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>
@@ -26,6 +33,7 @@ export default function Home() {
     setData([]);
     setFileName("");
     setProfile(null);
+    setStatistics({});
 
     if (!file.name.toLowerCase().endsWith(".csv")) {
       setError("Silakan pilih file CSV.");
@@ -50,7 +58,32 @@ export default function Home() {
         }
 
         setData(results.data);
-        setProfile(profileData(results.data));
+
+const newProfile = profileData(results.data);
+setProfile(newProfile);
+
+const headers = results.data[0];
+const rows = results.data.slice(1);
+
+const numericStatistics: Record<
+  string,
+  NumericStatistics | null
+> = {};
+
+newProfile.columnProfiles.forEach((column, columnIndex) => {
+  if (column.type !== "numeric") {
+    return;
+  }
+
+  const values = rows
+    .map((row) => Number(row[columnIndex]))
+    .filter((value) => Number.isFinite(value));
+
+  numericStatistics[column.name] =
+    calculateNumericStatistics(values);
+});
+
+setStatistics(numericStatistics);
       },
 
       error: () => {
@@ -229,6 +262,140 @@ export default function Home() {
         </div>
       ))}
     </div>
+    {Object.keys(statistics).length > 0 && (
+  <div className="mt-10 rounded-lg border p-6">
+    <h2 className="text-2xl font-bold">
+      📈 Statistical Analysis
+    </h2>
+
+    <div className="mt-6 space-y-6">
+      {Object.entries(statistics).map(
+        ([columnName, stats]) => {
+          if (!stats) return null;
+
+          return (
+            <div
+              key={columnName}
+              className="rounded-lg border p-4"
+            >
+              <h3 className="text-lg font-bold">
+                {columnName}
+              </h3>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Count
+                  </p>
+                  <p className="font-bold">
+                    {stats.count}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Mean
+                  </p>
+                  <p className="font-bold">
+                    {stats.mean.toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Median
+                  </p>
+                  <p className="font-bold">
+                    {stats.median.toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Minimum
+                  </p>
+                  <p className="font-bold">
+                    {stats.min}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Maximum
+                  </p>
+                  <p className="font-bold">
+                    {stats.max}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Range
+                  </p>
+                  <p className="font-bold">
+                    {stats.range.toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Standard Deviation
+                  </p>
+                  <p className="font-bold">
+                    {stats.standardDeviation.toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Q1
+                  </p>
+                  <p className="font-bold">
+                    {stats.q1.toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    Q3
+                  </p>
+                  <p className="font-bold">
+                    {stats.q3.toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">
+                    IQR
+                  </p>
+                  <p className="font-bold">
+                    {stats.iqr.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <p className="font-semibold">
+                  Outliers
+                </p>
+
+                {stats.outliers.length === 0 ? (
+                  <p className="mt-1">
+                    Tidak ditemukan
+                  </p>
+                ) : (
+                  <p className="mt-1">
+                    {stats.outliers.join(", ")}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        }
+      )}
+    </div>
+  </div>
+)}
   </div>
 )}
       </div>
