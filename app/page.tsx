@@ -10,6 +10,10 @@ import {
   calculateNumericStatistics,
   type NumericStatistics,
 } from "@/lib/statistics";
+import {
+  generateNumericInsights,
+  type DataInsight,
+} from "@/lib/insightEngine";
 
 type CSVData = string[][];
 
@@ -21,6 +25,7 @@ export default function Home() {
   const [statistics, setStatistics] = useState<
   Record<string, NumericStatistics | null>
 >({});
+  const [insights, setInsights] = useState<DataInsight[]>([]);
 
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>
@@ -33,7 +38,8 @@ export default function Home() {
     setData([]);
     setFileName("");
     setProfile(null);
-    setStatistics({});
+    setInsights([]);
+
 
     if (!file.name.toLowerCase().endsWith(".csv")) {
       setError("Silakan pilih file CSV.");
@@ -70,6 +76,8 @@ const numericStatistics: Record<
   NumericStatistics | null
 > = {};
 
+const newInsights: DataInsight[] = [];
+
 newProfile.columnProfiles.forEach((column, columnIndex) => {
   if (column.type !== "numeric") {
     return;
@@ -79,11 +87,22 @@ newProfile.columnProfiles.forEach((column, columnIndex) => {
     .map((row) => Number(row[columnIndex]))
     .filter((value) => Number.isFinite(value));
 
-  numericStatistics[column.name] =
-    calculateNumericStatistics(values);
+  const stats = calculateNumericStatistics(values);
+
+  numericStatistics[column.name] = stats;
+
+  if (stats) {
+    const insight = generateNumericInsights(
+      column.name,
+      stats
+    );
+
+    newInsights.push(insight);
+  }
 });
 
 setStatistics(numericStatistics);
+setInsights(newInsights);
       },
 
       error: () => {
@@ -393,6 +412,36 @@ setStatistics(numericStatistics);
           );
         }
       )}
+    </div>
+  </div>
+)}
+{insights.length > 0 && (
+  <div className="mt-10 rounded-lg border p-6">
+    <h2 className="text-2xl font-bold">
+      💡 Data Insights
+    </h2>
+
+    <div className="mt-6 space-y-6">
+      {insights.map((insight) => (
+        <div
+          key={insight.column}
+          className="rounded-lg border p-4"
+        >
+          <h3 className="text-lg font-bold">
+            {insight.column}
+          </h3>
+
+          <ul className="mt-3 list-disc space-y-2 pl-5">
+            {insight.insights.map(
+              (text, index) => (
+                <li key={index}>
+                  {text}
+                </li>
+              )
+            )}
+          </ul>
+        </div>
+      ))}
     </div>
   </div>
 )}
