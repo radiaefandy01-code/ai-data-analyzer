@@ -11,6 +11,10 @@ import {
   type NumericStatistics,
 } from "@/lib/statistics";
 import {
+  analyzeDataQuality,
+  type DataQualityResult,
+} from "@/lib/dataQuality";
+import {
   generateNumericInsights,
   type DataInsight,
 } from "@/lib/insightEngine";
@@ -30,6 +34,8 @@ export default function Home() {
   Record<string, NumericStatistics | null>
 >({});
   const [insights, setInsights] = useState<DataInsight[]>([]);
+  const [quality, setQuality] =
+  useState<DataQualityResult | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiError, setAiError] = useState("");
@@ -62,7 +68,8 @@ export default function Home() {
       createAnalysisContext(
         profile,
         numericOnlyStatistics,
-        insights
+        insights,
+        quality!
       );
 
     const response = await fetch("/api/analyze", {
@@ -107,10 +114,10 @@ export default function Home() {
     setError("");
     setData([]);
     setFileName("");
-    setProfile(null);
     setStatistics({});
+    setProfile(null);
     setInsights([]);
-
+    setQuality(null);
 
     if (!file.name.toLowerCase().endsWith(".csv")) {
       setError("Silakan pilih file CSV.");
@@ -138,6 +145,9 @@ export default function Home() {
 
 const newProfile = profileData(results.data);
 setProfile(newProfile);
+
+const newQuality = analyzeDataQuality(results.data);
+setQuality(newQuality);
 
 const headers = results.data[0];
 const rows = results.data.slice(1);
@@ -352,6 +362,96 @@ setInsights(newInsights);
         </div>
       ))}
     </div>
+  {quality && (
+  <div className="mt-10 rounded-lg border p-6">
+    <h2 className="text-2xl font-bold">
+      🛡️ Data Quality
+    </h2>
+
+    <div className="mt-6 grid gap-4 md:grid-cols-4">
+      <div>
+        <p className="text-sm text-gray-500">
+          Quality Score
+        </p>
+        <p className="text-2xl font-bold">
+          {quality.overallScore.toFixed(1)} / 100
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-gray-500">
+          Completeness
+        </p>
+        <p className="text-2xl font-bold">
+          {quality.completeness.toFixed(1)}%
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-gray-500">
+          Missing Values
+        </p>
+        <p className="text-2xl font-bold">
+          {quality.missingValues}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-sm text-gray-500">
+          Duplicate Rows
+        </p>
+        <p className="text-2xl font-bold">
+          {quality.duplicateRows}
+        </p>
+      </div>
+    </div>
+
+    <div className="mt-8">
+      <h3 className="text-lg font-bold">
+        Column Quality
+      </h3>
+
+      <div className="mt-4 space-y-4">
+        {quality.columnQuality.map((column) => (
+          <div
+            key={column.name}
+            className="rounded-lg border p-4"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">
+                {column.name}
+              </span>
+
+              <span className="font-bold">
+                {column.completeness.toFixed(1)}%
+              </span>
+            </div>
+
+            <div className="mt-2 h-2 w-full rounded bg-gray-200">
+              <div
+                className="h-2 rounded bg-black"
+                style={{
+                  width: `${column.completeness}%`,
+                }}
+              />
+            </div>
+
+            <div className="mt-2 text-sm text-gray-500">
+              <span>
+                Missing: {column.missing}
+              </span>
+              {" · "}
+              <span>
+                Unique: {column.unique}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
     {Object.keys(statistics).length > 0 && (
   <div className="mt-10 rounded-lg border p-6">
     <h2 className="text-2xl font-bold">
