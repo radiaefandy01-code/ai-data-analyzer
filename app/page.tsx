@@ -14,6 +14,10 @@ import {
   generateNumericInsights,
   type DataInsight,
 } from "@/lib/insightEngine";
+import {
+  createAnalysisContext,
+  type AnalysisContext,
+} from "@/lib/analysisContext";
 
 type CSVData = string[][];
 
@@ -26,6 +30,72 @@ export default function Home() {
   Record<string, NumericStatistics | null>
 >({});
   const [insights, setInsights] = useState<DataInsight[]>([]);
+  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiError, setAiError] = useState("");
+  
+  const handleAIAnalysis = async () => {
+  if (!profile) {
+    setAiError("Data belum dianalisis.");
+    return;
+  }
+
+  setIsAnalyzing(true);
+  setAiError("");
+  setAiAnalysis("");
+
+  try {
+    const numericOnlyStatistics: Record<
+      string,
+      NumericStatistics
+    > = {};
+
+    Object.entries(statistics).forEach(
+      ([columnName, stats]) => {
+        if (stats) {
+          numericOnlyStatistics[columnName] = stats;
+        }
+      }
+    );
+
+    const context: AnalysisContext =
+      createAnalysisContext(
+        profile,
+        numericOnlyStatistics,
+        insights
+      );
+
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        context,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result?.error || "Gagal melakukan analisis AI."
+      );
+    }
+
+    setAiAnalysis(result.analysis || "");
+  } catch (error) {
+    console.error("AI Analysis Error:", error);
+
+    setAiError(
+      error instanceof Error
+        ? error.message
+        : "Gagal melakukan analisis AI."
+    );
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   const handleFileChange = (
     event: React.ChangeEvent<HTMLInputElement>
@@ -38,6 +108,7 @@ export default function Home() {
     setData([]);
     setFileName("");
     setProfile(null);
+    setStatistics({});
     setInsights([]);
 
 
@@ -110,7 +181,7 @@ setInsights(newInsights);
       },
     });
   };
-
+  
   return (
     <main className="min-h-screen p-8">
       <div className="mx-auto max-w-6xl">
@@ -443,6 +514,46 @@ setInsights(newInsights);
         </div>
       ))}
     </div>
+  </div>
+)}
+{profile && (
+  <div className="mt-10 rounded-lg border p-6">
+    <h2 className="text-2xl font-bold">
+      🤖 AI Data Analyst
+    </h2>
+
+    <p className="mt-2 text-gray-600">
+      Gunakan AI untuk memberikan interpretasi
+      terhadap hasil analisis data.
+    </p>
+
+    <button
+      onClick={handleAIAnalysis}
+      disabled={isAnalyzing}
+      className="mt-6 rounded-lg bg-black px-6 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {isAnalyzing
+        ? "🤖 AI sedang menganalisis..."
+        : "🤖 Analisis dengan AI"}
+    </button>
+
+    {aiError && (
+      <div className="mt-6 rounded-lg border border-red-300 bg-red-50 p-4 text-red-700">
+        <strong>Error:</strong> {aiError}
+      </div>
+    )}
+
+    {aiAnalysis && (
+      <div className="mt-6 rounded-lg border p-5">
+        <h3 className="text-xl font-bold">
+          Hasil Analisis
+        </h3>
+
+        <div className="mt-4 whitespace-pre-wrap leading-7">
+          {aiAnalysis}
+        </div>
+      </div>
+    )}
   </div>
 )}
   </div>
